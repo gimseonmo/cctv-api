@@ -6,70 +6,69 @@ from streamlit_autorefresh import st_autorefresh
 SERVER_URL = "http://127.0.0.1:5001"
 
 st.title("CCTV 대시보드 사이트")
-st_autorefresh(interval=3000, limit=None, key="f5") # 3초마다 새로고침함
-
-if "latestData" not in st.session_state:
-    st.session_state["latestData"] = {}
+st_autorefresh(interval=3000, limit=None, key="f5")
 
 placeholder = st.empty()
 
 try:
-    # 여기서 최신 데이터 요청함
     response = requests.get(f"{SERVER_URL}/latest_data", timeout=3)
     if response.status_code == 200:
-        latestData = response.json()
-        latestImageFile = latestData.get("filename")  # 최근 업로드된 파일 이름
-
-        if latestImageFile:
-            # 가장 최신의 데이터 저장
-            st.session_state["latestData"] = latestData
-
-            # 파일 이름으로 업로드 시간 정함
-            timeStr = "_".join(latestImageFile.split("_")[:2])
-            uploadTime = datetime.strptime(timeStr, "%Y%m%d_%H%M%S")
-            formattedTime = uploadTime.strftime("%Y-%m-%d %H:%M:%S")
-
-            # 이미지, 영상 링크, 감지 정보
-            imgSrc = f"{SERVER_URL}/uploads/{latestImageFile}"
-            videoLink = latestData.get("video_url")
-            numPeopleDetected = latestData.get("person_detected", 0)
-            alertStatus = latestData.get("anomaly_detected", "N")
-
-            # 실신 감지 시 스티림릿 경고 표시
-            if alertStatus.upper() == "Y":
-                st.warning("Camera n: Fall detected! Please check immediately!")
-
-            # 실신 감짖되면 빨간색으로 강조함
-            borderColor = "#ff4d4d" if alertStatus.upper() == "Y" else "#ddd"
-            boxShadow = "0 0 15px rgba(255,77,77,0.5)" if alertStatus.upper() == "Y" else "2px 2px 5px rgba(0,0,0,0.1)"
-
-            cardHtml = f"""
+        cameras = response.json()  # 리스트 형태로 여러 카메라 데이터
+        if cameras:
+            # 카드 컨테이너 시작
+            st.markdown("""
             <div style="
-                width: 300px;
-                border: 2px solid {borderColor};
-                border-radius: 10px;
-                padding: 10px;
-                margin: 10px 0;
-                box-shadow: {boxShadow};
-                text-align: center;
-                transition: 0.3s;
+                display: flex;
+                justify-content: center;   /* 가운데 정렬 */
+                align-items: flex-start;
+                flex-wrap: nowrap;         /* 한 줄로 유지 */
+                gap: 20px;                 /* 카드 간 간격 */
             ">
-                {'<a href="' + videoLink + '" target="_blank">' if videoLink else ''}
-                    <img src="{imgSrc}" style="width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:8px;">
-                {'</a>' if videoLink else ''}
-                <div style="margin-top:10px; font-size:16px;">
-                    <p><b>업로드 시간:</b> {formattedTime}</p>
-                    <p><b>감지된 사람 수:</b> {numPeopleDetected}</p>
-                    <p><b>이상 감지 여부:</b> {alertStatus}</p>
-                </div>
-            </div>
-            """
+            """, unsafe_allow_html=True)
 
-            st.markdown(cardHtml, unsafe_allow_html=True)
+            for cam in cameras:
+                cam_id = cam.get("camera_id", "Unknown")
+                filename = cam.get("filename")
+                person_count = cam.get("person_detected", 0)
+                anomaly = cam.get("anomaly_detected", "N")
+                video_url = cam.get("video_url", "")
+
+                time_str = "_".join(filename.split("_")[:2])
+                upload_time = datetime.strptime(time_str, "%Y%m%d_%H%M%S").strftime("%Y-%m-%d %H:%M:%S")
+
+                border_color = "#ff4d4d" if anomaly.upper() == "Y" else "#ddd"
+                box_shadow = "0 0 15px rgba(255,77,77,0.5)" if anomaly.upper() == "Y" else "2px 2px 5px rgba(0,0,0,0.1)"
+                img_url = f"{SERVER_URL}/uploads/{filename}"
+
+                card_html = f"""
+                <div style="
+                    width: 300px;
+                    border: 2px solid {border_color};
+                    border-radius: 10px;
+                    padding: 10px;
+                    box-shadow: {box_shadow};
+                    text-align: center;
+                ">
+                    {'<a href="' + video_url + '" target="_blank">' if video_url else ''}
+                        <img src="{img_url}" style="width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:8px;">
+                    {'</a>' if video_url else ''}
+                    <div style="margin-top:10px; font-size:16px;">
+                        <p><b>카메라 ID :</b> {cam_id}</p>
+                        <p><b>업로드 시간 :</b> {upload_time}</p>
+                        <p><b>인식된 사람 수 :</b> {person_count}</p>
+                        <p><b>실신 감지 여부 :</b> {anomaly}</p>
+                    </div>
+                </div>
+                """
+                st.markdown(card_html, unsafe_allow_html=True)
+
+            # 카드 컨테이너 닫기
+            st.markdown("</div>", unsafe_allow_html=True)
+
         else:
-            placeholder.warning("아직 업로드된 이미지가 없습니다.")
+            placeholder.warning("이미지가 업로드되지 않았습니다.")
     else:
-        placeholder.error(f"서버 에러: {response.status_code}")
+        placeholder.error(f"통신 에러, {response.status_code}")
 
 except Exception as e:
-    placeholder.error(f"통신 에러: {e}")
+    placeholder.error(f"통신 에러, {e}")
