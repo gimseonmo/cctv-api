@@ -5,7 +5,7 @@ from streamlit_autorefresh import st_autorefresh
 
 SERVER_URL = "http://127.0.0.1:5001"
 
-st.set_page_config(page_title="CCTV 대시보드 사이트", layout="wide")
+st.set_page_config(page_title="CCTV 대시보드", layout="wide")
 
 st.session_state.clear()
 
@@ -18,7 +18,7 @@ body {
 </style>
 """, unsafe_allow_html=True)
 
-st.title("CCTV 대시보드 사이트")
+st.title("CCTV 대시보드")
 st_autorefresh(interval=3000, limit=None, key="f5")
 
 try:

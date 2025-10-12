@@ -3,50 +3,60 @@ import os
 from datetime import datetime
 
 app = Flask(__name__)
+
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-# 각 카메라별로 최신 데이터 저장하는거
-latest_data = {}
+camera_latest_files = {}
 
 @app.route('/upload', methods=['POST'])
-def upload_data():
-    global latest_data
-    # 카메라 ID
+def upload():
     camera_id = request.form.get('camera_id')
-    person_count = request.form.get('person_detected')
-    anomaly_detected = request.form.get('anomaly_detected')
-    video_url = request.form.get('video_url')
-
-    # 필수 데이터 호ㅓㅏ인
-    if 'file' not in request.files or not all([camera_id, person_count, anomaly_detected, video_url]):
-        return jsonify({'error': '필수 데이터 없음'}), 400
-
     file = request.files['file']
-    filename = datetime.now().strftime("%Y%m%d_%H%M%S_") + f"{camera_id}_" + file.filename
+    person_detected = request.form.get('person_detected', 0)
+    anomaly_detected = request.form.get('anomaly_detected', 'N')
+    video_url = request.form.get('video_url', '')
+
+    if not camera_id or not file:
+        return jsonify({'error': 'Missing camera_id or file'}), 400
+
+    # 이전 파일 삭제하는거
+    if camera_id in camera_latest_files:
+        old_filename = camera_latest_files[camera_id]
+        old_path = os.path.join(UPLOAD_FOLDER, old_filename)
+        if os.path.exists(old_path):
+            os.remove(old_path)
+
+    # 새로운 파일 저ㅏㅇ
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"{timestamp}_{camera_id}.png"
     file.save(os.path.join(UPLOAD_FOLDER, filename))
 
-    # 카메라별러ㅗ 최신 데이터 저장함 (다른 카메라 데이터는 유지)
-    latest_data[camera_id] = {
+    camera_latest_files[camera_id] = filename
+
+    return jsonify({
         'camera_id': camera_id,
         'filename': filename,
-        'person_detected': person_count,
+        'person_detected': person_detected,
         'anomaly_detected': anomaly_detected,
         'video_url': video_url
-    }
-
-    return jsonify({'message': '업로드 성공', **latest_data[camera_id]})
+    })
 
 @app.route('/uploads/<filename>')
-def serve_image(filename):
+def serve_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
 
 @app.route('/latest_data', methods=['GET'])
-def get_latest_data():
-    if not latest_data:
-        return jsonify([])
-    # 리스트 형태로 반환
-    return jsonify(list(latest_data.values()))
+def latest_data():
+    data = []
+    for cam_id, filename in camera_latest_files.items():
+        data.append({
+            'camera_id': cam_id,
+            'filename': filename,
+            'person_detected': 0,
+            'anomaly_detected': 'N',
+            'video_url': ''
+        })
+    return jsonify(data)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001, debug=True)
+    app.run(port=5001)
