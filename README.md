@@ -29,6 +29,7 @@ curl -X POST http://127.0.0.1:5001/upload \
 5. 주의 사항
 	1.	file 필드는 정확한 로컬 경로 필요
 	•	예: -F "file=@<filename>"
-	2.	anomaly_detected 값은 대문자 Y/N
+	2.	app.py와 front.py가 정상 동작하려면 프로젝트 루트에 uploads 폴더가 있어야 함
 	3.	모든 필드 다 적어줘여,,
 	4.	127.0.0.1은 로컬 서버 주소라서 외부 접속 불가 (나중에 버셀로 업로드할 생각)
+    
