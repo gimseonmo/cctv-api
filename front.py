@@ -11,9 +11,31 @@ st.session_state.clear()
 
 st.markdown("""
 <style>
+/* 전체 배경 검은색으로 통일 */
+.stApp {
+    background-color: #1e1e1e !important;
+}
+.main .block-container {
+    background-color: #1e1e1e !important;
+    padding-top: 1rem;
+}
 body {
-    background-color: #1e1e1e;
+    background-color: #1e1e1e !important;
     color: white;
+}
+/* Streamlit 기본 흰색 배경 제거 */
+section[data-testid="stSidebar"] {
+    background-color: #1e1e1e;
+}
+/* iframe 컨테이너 배경 제거 */
+.element-container iframe {
+    background-color: transparent !important;
+}
+div[data-testid="stVerticalBlock"] > div {
+    background-color: #1e1e1e !important;
+}
+.stMarkdown {
+    background-color: #1e1e1e !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -26,7 +48,27 @@ try:
     if response.status_code == 200:
         cameras = response.json()
         if cameras:
+            # 이상 감지 여부 확인
+            has_anomaly = any(cam.get("anomaly_detected", "N").upper() == "Y" for cam in cameras)
+            
+            if has_anomaly:
+                st.error("⚠️ 일부 카메라에서 실신이 의심됩니다!")
+            else:
+                st.success("✅ 모든 카메라 정상 작동 중")
+            
             html = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body {
+                        margin: 0;
+                        padding: 0;
+                        background-color: #1e1e1e !important;
+                    }
+                </style>
+            </head>
+            <body>
             <div style="
                 display: flex;
                 flex-wrap: wrap;              
@@ -34,6 +76,7 @@ try:
                 align-items: flex-start;
                 gap: 20px;                  
                 padding: 10px;
+                background-color: #1e1e1e;
             ">
             """
 
@@ -45,8 +88,6 @@ try:
                 video_url = cam.get("video_url", "")
                 time_str = "_".join(filename.split("_")[:2])
                 upload_time = datetime.strptime(time_str, "%Y%m%d_%H%M%S").strftime("%Y-%m-%d %H:%M:%S")
-
-                if anomaly.upper() == "Y":st.error(f"{cam_id}에서 실신이 감지되었습니다!")
 
                 border_color = "#ff4d4d" if anomaly.upper() == "Y" else "#555"
                 box_shadow = (
@@ -86,7 +127,11 @@ try:
                 </div>
                 """
 
-            html += "</div>"
+            html += """
+            </div>
+            </body>
+            </html>
+            """
 
             st.components.v1.html(html, height=900, scrolling=True)
 

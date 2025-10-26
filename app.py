@@ -10,6 +10,10 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # 각 카메라별 최신 데이터 저장
 camera_latest_files = {}
 
+@app.route('/', methods=['GET'])
+def health_check():
+    return jsonify({'status': 'ok', 'message': 'Server is running'}), 200
+
 @app.route('/upload', methods=['POST'])
 def upload():
     camera_id = request.form.get('camera_id')
